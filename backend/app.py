@@ -4,6 +4,8 @@ from flask_marshmallow import Marshmallow
 from marshmallow_sqlalchemy import SQLAlchemySchema, auto_field, fields
 from datetime import datetime
 
+from flask_smorest import abort
+
 
 app = Flask(__name__)
 app.config[
@@ -87,6 +89,19 @@ def authors():
 @app.post("/authors")
 def create_author():
     request_data = request.get_json()
+    firstname = request_data["first_name"]
+    lastname = request_data["last_name"]
+    created_at = request_data["created_at"]
+
+    author = Author(first_name=firstname, last_name=lastname, created_at=created_at)
+    return jsonify(
+        {
+            "id": author.id,
+            "first_name": author.first_name,
+            "last_name": author.last_name,
+            "created_at": author.created_at,
+        }
+    )
 
 
 @app.get("/books")
@@ -102,19 +117,23 @@ def create_book():
     year = request_data["year"]
     author_id = request_data["author_id"]
 
+    if request_data["author_id"] not in request_data:
+        abort(404, message="Author not found")
+
     book = Book(title=title, year=year, author_id=author_id)
     db.session.add(book)
     db.session.commit()
 
-    # new_book = {"title": request_data["title"]}
-    # db.session.close()
-    return jsonify(
-        {
-            "id": book.id,
-            "title": book.title,
-            "year": book.year,
-            "author_id": book.author_id,
-        }
+    return (
+        jsonify(
+            {
+                "id": book.id,
+                "title": book.title,
+                "year": book.year,
+                "author_id": book.author_id,
+            }
+        ),
+        201,
     )
 
 
