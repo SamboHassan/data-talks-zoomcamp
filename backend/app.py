@@ -20,7 +20,7 @@ ma = Marshmallow(app)
 class Author(db.Model):
     __tablename__ = "Author"
 
-    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    id = db.Column(db.Integer, primary_key=True)
     first_name = db.Column(db.String(20))
     last_name = db.Column(db.String(20))
     created_at = db.Column(db.DateTime, default=datetime.utcnow())
@@ -83,7 +83,34 @@ class BookSchema:
 @app.get("/authors")
 def authors():
     authors = Author.query.all()
-    return {"authors": authors}
+    author_books_query = (
+        db.session.query(Author, Book)
+        .join(Book)
+        .filter(Author.id == Book.author_id)
+        .all()
+    )
+
+    author_books = []
+
+    for author, book in author_books_query:
+        author_books.append({"id": book.id, "title": book.title, "year": book.year})
+
+    if len(authors) == 0:
+        abort(404)
+
+    return jsonify(
+        {
+            "authors": {
+                author.id: {
+                    "firstname": author.first_name,
+                    "lastname": author.last_name,
+                    "created_at": author.created_at,
+                    "books": author_books,
+                }
+                for author in authors
+            }
+        }
+    )
 
 
 @app.post("/authors")
@@ -107,7 +134,19 @@ def create_author():
 @app.get("/books")
 def books():
     books = Book.query.all()
-    return {"Books": books}
+    return jsonify(
+        {
+            "Success": True,
+            "books": {
+                book.id: {
+                    "title": book.title,
+                    "year": book.year,
+                    "author_id": book.author_id,
+                }
+                for book in books
+            },
+        }
+    )
 
 
 @app.post("/books")
